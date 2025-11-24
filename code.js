@@ -11,21 +11,22 @@ class UltimateFirebaseExtension {
         this.functions = null;
         this.analytics = null;
         this.remoteConfig = null;
-        this.performance = null; // [НОВОЕ] Для Performance
+        this.performance = null;
         this.currentUser = null;
         this.phoneConfirmationResult = null;
         this.mfaResolver = null;
         this.persistenceType = 'local';
         this.lastErrorMessage = '';
-        this.lastReceivedData = ''; // Для RTDB
-        this.lastFirestoreData = ''; // Для слушателей Firestore
-        this.lastFirestoreQueryResult = ''; // Для запросов Firestore
-        this.lastRtdbQueryResult = ''; // [НОВОЕ] Для запросов RTDB
+        this.lastReceivedData = ''; 
+        this.lastFirestoreData = ''; 
+        this.lastFirestoreQueryResult = ''; 
+        this.lastRtdbQueryResult = ''; 
         this.lastFunctionResult = '';
+        this.isInitialized = false; // [НОВОЕ] Флаг инициализации
 
         this.dbListeners = new Map();
         this.firestoreListeners = new Map();
-        this.traces = new Map(); // [НОВОЕ] Для Performance
+        this.traces = new Map();
 
         this.runtime.on('PROJECT_STOP_ALL', () => {
             if (this.db) { this.dbListeners.forEach((listener, path) => this.db.ref(path).off('value', listener)); }
@@ -34,7 +35,7 @@ class UltimateFirebaseExtension {
             if (this.firestore) { this.firestoreListeners.forEach(unsubscribe => unsubscribe()); }
             this.firestoreListeners.clear();
 
-            this.traces.clear(); // [НОВОЕ] Очищаем трассировки
+            this.traces.clear();
             this.mfaResolver = null;
             this.phoneConfirmationResult = null;
         });
@@ -52,6 +53,11 @@ class UltimateFirebaseExtension {
             blocks: [
                 { opcode: 'loadAndConfigure', blockType: Scratch.BlockType.COMMAND, text: 'Подключить Firebase: URL [DB_URL] API ключ [API_KEY] ID проекта [PROJECT_ID]', arguments: { DB_URL: { type: Scratch.ArgumentType.STRING, defaultValue: 'https://project-id.firebaseio.com' }, API_KEY: { type: Scratch.ArgumentType.STRING, defaultValue: 'AIzaSy...' }, PROJECT_ID: { type: Scratch.ArgumentType.STRING, defaultValue: 'your-project-id' }}},
                 '---',
+                { blockType: Scratch.BlockType.LABEL, text: '🛠️ Инициализация' }, // [НОВОЕ]
+                { opcode: 'onFirebaseInitialized', blockType: Scratch.BlockType.HAT, text: 'Когда Firebase инициализирован', isEdgeActivated: false }, // [НОВОЕ]
+                { opcode: 'isFirebaseInitialized', blockType: Scratch.BlockType.BOOLEAN, text: 'Firebase инициализирован?' }, // [НОВОЕ]
+                { opcode: 'reinitializeFirebase', blockType: Scratch.BlockType.COMMAND, text: 'Перезапустить Firebase' }, // [НОВОЕ]
+                '---',
                 { blockType: Scratch.BlockType.LABEL, text: 'Аутентификация и Профиль' },
                 { opcode: 'setAuthPersistence', blockType: Scratch.BlockType.COMMAND, text: 'Сохранять вход [PERSISTENCE_TYPE]', arguments: { PERSISTENCE_TYPE: { type: Scratch.ArgumentType.STRING, menu: 'persistenceOptions' }}},
                 { opcode: 'signUp', blockType: Scratch.BlockType.COMMAND, text: 'Зарегистрировать email [EMAIL] пароль [PASSWORD]', arguments: { EMAIL: { type: Scratch.ArgumentType.STRING }, PASSWORD: { type: Scratch.ArgumentType.STRING, inputType: Scratch.ArgumentType.PASSWORD }}},
@@ -65,7 +71,6 @@ class UltimateFirebaseExtension {
                 { opcode: 'updateUserProfile', blockType: Scratch.BlockType.COMMAND, text: 'Обновить профиль: имя [NAME] URL фото [PHOTO_URL]', arguments: { NAME: { type: Scratch.ArgumentType.STRING }, PHOTO_URL: { type: Scratch.ArgumentType.STRING }}},
                 { opcode: 'updateUserPassword', blockType: Scratch.BlockType.COMMAND, text: 'Изменить пароль на [NEW_PASSWORD]', arguments: { NEW_PASSWORD: { type: Scratch.ArgumentType.STRING, inputType: Scratch.ArgumentType.PASSWORD }}},
                 
-                // [НОВЫЕ] Блоки управления аккаунтом
                 { opcode: 'reauthenticateUser', blockType: Scratch.BlockType.COMMAND, text: 'Подтвердить пароль [PASSWORD] для безопасной операции', arguments: { PASSWORD: { type: Scratch.ArgumentType.STRING, inputType: Scratch.ArgumentType.PASSWORD }}},
                 { opcode: 'deleteUser', blockType: Scratch.BlockType.COMMAND, text: 'Удалить аккаунт текущего пользователя' },
 
@@ -91,8 +96,10 @@ class UltimateFirebaseExtension {
 
                 '---',
                 { blockType: Scratch.BlockType.LABEL, text: '🗂️ Firestore (Запросы и Слушатели)' },
-                // [ИЗМЕНЕНО] Блок запроса стал мощнее
+                // Старый блок запроса (команда)
                 { opcode: 'firestoreQuery', blockType: Scratch.BlockType.COMMAND, text: 'Найти в [PATH] где [FIELD] [OP] [VALUE] сортировать [SORT_BY] [SORT_DIR] лимит [LIMIT]', arguments: { PATH: { type: Scratch.ArgumentType.STRING, defaultValue: 'players' }, FIELD: { type: Scratch.ArgumentType.STRING, defaultValue: 'score' }, OP: { type: Scratch.ArgumentType.STRING, menu: 'firestoreOps' }, VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: '100' }, SORT_BY: { type: Scratch.ArgumentType.STRING, defaultValue: 'score' }, SORT_DIR: { type: Scratch.ArgumentType.STRING, menu: 'sortDir' }, LIMIT: { type: Scratch.ArgumentType.NUMBER } }},
+                // НОВЫЙ блок запроса (репортер)
+                { opcode: 'firestoreQuerySync', blockType: Scratch.BlockType.REPORTER, text: 'Найти в [PATH] где [FIELD] [OP] [VALUE] сортировать [SORT_BY] [SORT_DIR] лимит [LIMIT] (результат)', arguments: { PATH: { type: Scratch.ArgumentType.STRING, defaultValue: 'players' }, FIELD: { type: Scratch.ArgumentType.STRING, defaultValue: 'score' }, OP: { type: Scratch.ArgumentType.STRING, menu: 'firestoreOps' }, VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: '100' }, SORT_BY: { type: Scratch.ArgumentType.STRING, defaultValue: 'score' }, SORT_DIR: { type: Scratch.ArgumentType.STRING, menu: 'sortDir' }, LIMIT: { type: Scratch.ArgumentType.NUMBER } }},
                 { opcode: 'onFirestoreQuery', blockType: Scratch.BlockType.HAT, text: 'Когда запрос Firestore выполнен' },
                 { opcode: 'getFirestoreQueryResult', blockType: Scratch.BlockType.REPORTER, text: 'результат запроса Firestore' },
                 { opcode: 'listenForDoc', blockType: Scratch.BlockType.HAT, text: 'Когда документ [PATH] изменяется', isEdgeActivated: false, arguments: { PATH: { type: Scratch.ArgumentType.STRING, defaultValue: 'players/player1' }}},
@@ -103,7 +110,6 @@ class UltimateFirebaseExtension {
                 '---',
                 { blockType: Scratch.BlockType.LABEL, text: '☁️ Cloud Storage' },
                 { opcode: 'storageUploadText', blockType: Scratch.BlockType.COMMAND, text: 'загрузить текст [TEXT_DATA] в файл по пути [PATH]', arguments: { TEXT_DATA: { type: Scratch.ArgumentType.STRING, defaultValue: 'Hello World!' }, PATH: { type: Scratch.ArgumentType.STRING, defaultValue: 'saves/save1.txt' }}},
-                // [НОВЫЙ БЛОК] Загрузка Data URL
                 { opcode: 'storageUploadDataURL', blockType: Scratch.BlockType.COMMAND, text: 'Загрузить Data URL [DATA_URL] как файл [PATH]', arguments: { DATA_URL: { type: Scratch.ArgumentType.STRING, defaultValue: 'data:image/png;base64,iVBORw0KG...' }, PATH: { type: Scratch.ArgumentType.STRING, defaultValue: 'images/myAvatar.png' }}},
                 { opcode: 'storageGetURL', blockType: Scratch.BlockType.REPORTER, text: 'получить URL для скачивания файла [PATH]', arguments: { PATH: { type: Scratch.ArgumentType.STRING, defaultValue: 'images/logo.png' }}},
                 { opcode: 'storageDeleteFile', blockType: Scratch.BlockType.COMMAND, text: 'удалить файл по пути [PATH]', arguments: { PATH: { type: Scratch.ArgumentType.STRING, defaultValue: 'saves/old_save.txt' }}},
@@ -113,7 +119,6 @@ class UltimateFirebaseExtension {
                 { opcode: 'analyticsLogEvent', blockType: Scratch.BlockType.COMMAND, text: 'Записать событие [NAME] с данными [DATA]', arguments: { NAME: { type: Scratch.ArgumentType.STRING, defaultValue: 'level_complete' }, DATA: { type: Scratch.ArgumentType.STRING, defaultValue: '{"level_name":"Level 1", "score": 100}' }}},
                 { opcode: 'analyticsSetUserProperty', blockType: Scratch.BlockType.COMMAND, text: 'Установить свойство пользователя [KEY] в [VALUE]', arguments: { KEY: { type: Scratch.ArgumentType.STRING, defaultValue: 'favorite_character' }, VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: 'wizard' }}},
                 
-                // [НОВЫЕ] Блоки Performance
                 '---',
                 { blockType: Scratch.BlockType.LABEL, text: '⏱️ Мониторинг Производительности' },
                 { opcode: 'perfStartTrace', blockType: Scratch.BlockType.COMMAND, text: 'Начать отслеживание [TRACE_NAME]', arguments: { TRACE_NAME: { type: Scratch.ArgumentType.STRING, defaultValue: 'load_level_1' }}},
@@ -128,13 +133,22 @@ class UltimateFirebaseExtension {
 
                 '---',
                 { blockType: Scratch.BlockType.LABEL, text: '🚀 Cloud Functions (Callable)' },
+                // Старый блок вызова (команда)
                 { opcode: 'functionsCall', blockType: Scratch.BlockType.COMMAND, text: 'вызвать облачную функцию [NAME] с данными [DATA]', arguments: { NAME: { type: Scratch.ArgumentType.STRING, defaultValue: 'processPayment' }, DATA: { type: Scratch.ArgumentType.STRING, defaultValue: '{"amount":100, "currency":"USD"}' }}},
+                // НОВЫЙ блок вызова (репортер)
+                { opcode: 'getFunctionResultSync', blockType: Scratch.BlockType.REPORTER, text: 'результат вызова [NAME] с данными [DATA]', arguments: { NAME: { type: Scratch.ArgumentType.STRING, defaultValue: 'processPayment' }, DATA: { type: Scratch.ArgumentType.STRING, defaultValue: '{"amount":100, "currency":"USD"}' }}},
                 { opcode: 'onFunctionResult', blockType: Scratch.BlockType.HAT, text: 'когда облачная функция вернула ответ'},
                 { opcode: 'getFunctionResult', blockType: Scratch.BlockType.REPORTER, text: 'последний ответ от функции' },
+                
                 '---',
                 { blockType: Scratch.BlockType.LABEL, text: '🌐 HTTPS Функции' },
+                // Старые блоки HTTP
                 { opcode: 'httpsCallGet', blockType: Scratch.BlockType.COMMAND, text: 'HTTPS GET запрос на эндпоинт [ENDPOINT]', arguments: { ENDPOINT: { type: Scratch.ArgumentType.STRING, defaultValue: 'helloWorld' } } },
                 { opcode: 'httpsCallPost', blockType: Scratch.BlockType.COMMAND, text: 'HTTPS POST запрос на эндпоинт [ENDPOINT] с данными [DATA]', arguments: { ENDPOINT: { type: Scratch.ArgumentType.STRING, defaultValue: 'processData' }, DATA: { type: Scratch.ArgumentType.STRING, defaultValue: '{"key":"value"}' } } },
+                // НОВЫЕ блоки HTTP (репортеры)
+                { opcode: 'httpsCallGetSync', blockType: Scratch.BlockType.REPORTER, text: 'результат HTTPS GET запроса на [ENDPOINT]', arguments: { ENDPOINT: { type: Scratch.ArgumentType.STRING, defaultValue: 'helloWorld' } } },
+                { opcode: 'httpsCallPostSync', blockType: Scratch.BlockType.REPORTER, text: 'результат HTTPS POST запроса на [ENDPOINT] с данными [DATA]', arguments: { ENDPOINT: { type: Scratch.ArgumentType.STRING, defaultValue: 'processData' }, DATA: { type: Scratch.ArgumentType.STRING, defaultValue: '{"key":"value"}' } } },
+                
                 '---',
                 { blockType: Scratch.BlockType.LABEL, text: 'База данных в реальном времени (старая)' },
                 { opcode: 'writeData', blockType: Scratch.BlockType.COMMAND, text: 'Записать по пути [PATH] значение [VALUE]', arguments: { PATH: { type: Scratch.ArgumentType.STRING, defaultValue: 'users/player1' }, VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: '{"score": 100}' }}},
@@ -147,10 +161,12 @@ class UltimateFirebaseExtension {
                 { opcode: 'listenForData', blockType: Scratch.BlockType.HAT, text: 'Когда данные по пути [PATH] изменяются', isEdgeActivated: false, arguments: { PATH: { type: Scratch.ArgumentType.STRING, defaultValue: 'chats/main' }}},
                 { opcode: 'getLastReceivedData', blockType: Scratch.BlockType.REPORTER, text: 'Последние полученные данные (RTDB)'},
                 
-                // [НОВЫЕ] Блоки запросов RTDB
                 '---',
                 { blockType: Scratch.BlockType.LABEL, text: 'RTDB (Запросы для списков лидеров)' },
+                // Старый блок запроса (команда)
                 { opcode: 'rtdbQuery', blockType: Scratch.BlockType.COMMAND, text: 'Найти в RTDB [PATH] сортировать по [SORT_BY] взять [LIMIT_TYPE] [LIMIT] шт', arguments: { PATH: { type: Scratch.ArgumentType.STRING, defaultValue: 'scores' }, SORT_BY: { type: Scratch.ArgumentType.STRING, defaultValue: 'score' }, LIMIT_TYPE: { type: Scratch.ArgumentType.STRING, menu: 'limitType' }, LIMIT: { type: Scratch.ArgumentType.NUMBER, defaultValue: 10 } }},
+                // НОВЫЙ блок запроса (репортер)
+                { opcode: 'rtdbQuerySync', blockType: Scratch.BlockType.REPORTER, text: 'Найти в RTDB [PATH] сортировать по [SORT_BY] взять [LIMIT_TYPE] [LIMIT] шт (результат)', arguments: { PATH: { type: Scratch.ArgumentType.STRING, defaultValue: 'scores' }, SORT_BY: { type: Scratch.ArgumentType.STRING, defaultValue: 'score' }, LIMIT_TYPE: { type: Scratch.ArgumentType.STRING, menu: 'limitType' }, LIMIT: { type: Scratch.ArgumentType.NUMBER, defaultValue: 10 } }},
                 { opcode: 'onRtdbQuery', blockType: Scratch.BlockType.HAT, text: 'Когда запрос RTDB выполнен' },
                 { opcode: 'getRtdbQueryResult', blockType: Scratch.BlockType.REPORTER, text: 'результат запроса RTDB' },
                 
@@ -166,7 +182,6 @@ class UltimateFirebaseExtension {
                 providers: { acceptReporters: true, items: ['Google', 'Microsoft', 'GitHub', 'Apple', 'Anonymous'] },
                 userFields: { acceptReporters: true, items: ['Email', 'UID', 'Display Name', 'Phone Number', 'Photo URL', 'Почта подтверждена?'] },
                 firestoreOps: { acceptReporters: true, items: ['==', '!=', '<', '<=', '>', '>=', 'array-contains'] },
-                // [НОВЫЕ] Меню
                 sortDir: { acceptReporters: true, items: ['по убыванию', 'по возрастанию'] },
                 limitType: { acceptReporters: true, items: ['первые', 'последние'] }
             }
@@ -185,7 +200,7 @@ class UltimateFirebaseExtension {
             case 'functions': 
             case 'analytics':
             case 'remoteConfig':
-            case 'performance': // [НОВОЕ]
+            case 'performance': 
                 this.runtime.startHats('ultimateFirebase_onDbError');
                 break; 
         } 
@@ -193,6 +208,70 @@ class UltimateFirebaseExtension {
 
     _isReady(service) { if (!this.firebase) { this._handleError({ message: 'Firebase не инициализирован!' }, 'auth'); return false; } if (service && !this[service]) { this._handleError({ message: `Сервис ${service} не доступен.` }, 'auth'); return false; } return true; }
     _parseValue(value) { try { return JSON.parse(value); } catch (e) { return value; } }
+    
+    // [ИЗМЕНЕНО] Вынос логики инициализации в отдельный метод для переиспользования
+    async _initialize(config) {
+        this.isInitialized = false; // Сброс флага
+        
+        const loadScript = src => new Promise((resolve, reject) => { 
+            if (document.querySelector(`script[src="${src}"]`)) return resolve(); 
+            const s = document.createElement('script'); 
+            s.src = src; 
+            s.onload = resolve; 
+            s.onerror = () => reject(`Ошибка загрузки скрипта: ${src}`); 
+            document.head.appendChild(s); 
+        }); 
+        
+        // Загрузка всех необходимых скриптов
+        await Promise.all([ 
+            loadScript("https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"), 
+            loadScript("https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"), 
+            loadScript("https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"), 
+            loadScript("https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"), 
+            loadScript("https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"), 
+            loadScript("https://www.gstatic.com/firebasejs/8.10.1/firebase-functions.js"),
+            loadScript("https://www.gstatic.com/firebasejs/8.10.1/firebase-analytics.js"), 
+            loadScript("https://www.gstatic.com/firebasejs/8.10.1/firebase-remote-config.js"),
+            loadScript("https://www.gstatic.com/firebasejs/8.10.1/firebase-performance.js")
+        ]);
+
+        if (window.firebase.apps.length) { 
+            // Если есть уже инициализированное приложение, 
+            // мы его не переинициализируем, а просто берем, 
+            // чтобы не было ошибки. Для полной переинициализации
+            // нужно вызывать reinitializeFirebase.
+            this.firebase = window.firebase.app(); 
+        } else { 
+            this.firebase = window.firebase.initializeApp(config); 
+        } 
+
+        this.auth = firebase.auth(); 
+        this.db = firebase.database(); 
+        this.firestore = firebase.firestore(); 
+        this.storage = firebase.storage(); 
+        this.functions = firebase.functions(); 
+        this.analytics = firebase.analytics();
+        this.remoteConfig = firebase.remoteConfig();
+        this.performance = firebase.performance(); 
+        
+        this.remoteConfig.settings = {
+            minimumFetchIntervalMillis: 3600000,
+            fetchTimeoutMillis: 60000 
+        };
+        this.remoteConfig.defaultConfig = {};
+
+        this.auth.onAuthStateChanged(user => { this.currentUser = user; }); 
+        
+        try { 
+            window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', { 'size': 'invisible' }); 
+        } catch (e) { 
+            console.warn("Recaptcha Verifier не удалось инициализировать. Вход по телефону может не работать."); 
+        } 
+
+        this.isInitialized = true; // Установка флага
+        this.runtime.startHats('ultimateFirebase_onFirebaseInitialized');
+        console.log("Firebase Full Suite SDK загружен и настроен."); 
+    }
     
     loadAndConfigure(args) { 
         this._setupRecaptchaContainer(); 
@@ -206,64 +285,40 @@ class UltimateFirebaseExtension {
             measurementId: `G-`
         }; 
 
-        const loadScript = src => new Promise((resolve, reject) => { 
-            if (document.querySelector(`script[src="${src}"]`)) return resolve(); 
-            const s = document.createElement('script'); 
-            s.src = src; 
-            s.onload = resolve; 
-            s.onerror = () => reject(`Ошибка загрузки скрипта: ${src}`); 
-            document.head.appendChild(s); 
-        }); 
-        
-        // [ИЗМЕНЕНО] Добавлена загрузка Performance
-        return Promise.all([ 
-            loadScript("https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"), 
-            loadScript("https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"), 
-            loadScript("https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"), 
-            loadScript("https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"), 
-            loadScript("https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"), 
-            loadScript("https://www.gstatic.com/firebasejs/8.10.1/firebase-functions.js"),
-            loadScript("https://www.gstatic.com/firebasejs/8.10.1/firebase-analytics.js"), 
-            loadScript("https://www.gstatic.com/firebasejs/8.10.1/firebase-remote-config.js"),
-            loadScript("https://www.gstatic.com/firebasejs/8.10.1/firebase-performance.js") // [НОВОЕ]
-        ]).then(() => { 
-            if (!window.firebase.apps.length) { 
-                this.firebase = window.firebase.initializeApp(firebaseConfig); 
-            } else { 
-                this.firebase = window.firebase.app(); 
-            } 
-            this.auth = firebase.auth(); 
-            this.db = firebase.database(); 
-            this.firestore = firebase.firestore(); 
-            this.storage = firebase.storage(); 
-            this.functions = firebase.functions(); 
-            this.analytics = firebase.analytics();
-            this.remoteConfig = firebase.remoteConfig();
-            this.performance = firebase.performance(); // [НОВОЕ]
-            
-            this.remoteConfig.settings = {
-                minimumFetchIntervalMillis: 3600000,
-                fetchTimeoutMillis: 60000 
-            };
-            this.remoteConfig.defaultConfig = {};
-
-            this.auth.onAuthStateChanged(user => { this.currentUser = user; }); 
-            console.log("Firebase Full Suite SDK загружен и настроен."); 
-            try { 
-                window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', { 'size': 'invisible' }); 
-            } catch (e) { 
-                console.warn("Recaptcha Verifier не удалось инициализировать. Вход по телефону может не работать."); 
-            } 
-        }).catch(error => { this._handleError(error, 'auth'); }); 
+        return this._initialize(firebaseConfig).catch(error => this._handleError(error, 'auth'));
     }
     
+    // [НОВЫЙ БЛОК] Повторная инициализация
+    reinitializeFirebase(args) {
+        if (this.firebase) {
+            // Закрываем все слушатели и выходим
+            this.runtime.emit('PROJECT_STOP_ALL');
+            // Удаляем существующее приложение Firebase
+            try {
+                this.firebase.delete();
+            } catch(e) {
+                console.warn('Не удалось удалить старое приложение Firebase:', e);
+            }
+            this.firebase = null;
+        }
+
+        // Вызываем команду "Подключить Firebase..." с текущими параметрами, 
+        // которые, к сожалению, мы не сохранили, поэтому блок перезапуска должен 
+        // быть вызван после 'Подключить Firebase'
+        this._handleError({ message: 'Для повторной инициализации используйте блок "Подключить Firebase..." с новыми или теми же параметрами. Этот блок лишь очищает предыдущую сессию.' }, 'auth');
+    }
+
+    // [НОВЫЙ БЛОК] Булевый репортер
+    isFirebaseInitialized() { return this.isInitialized; }
+
+    onFirebaseInitialized() { return false; }
     onAuthError() { return false; }
     onDbError() { return false; }
     onMfaError() { return false; }
     getLastError() { return this.lastErrorMessage; }
     clearLastError() { this.lastErrorMessage = ''; }
     
-    // --- Аутентификация ---
+    // ... (Остальные методы Аутентификации) ...
     setAuthPersistence(args) { if (!this._isReady('auth')) return; this.persistenceType = (args.PERSISTENCE_TYPE === 'Навсегда (по умолчанию)') ? 'local' : 'session'; }
     _getPersistence() { return this.persistenceType === 'local' ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION; }
     
@@ -281,7 +336,6 @@ class UltimateFirebaseExtension {
     sendPasswordReset(args) { if (!this._isReady('auth')) return; return this.auth.sendPasswordResetEmail(args.EMAIL).catch(e => this._handleError(e, 'auth')); }
     updateUserEmail(args) { if (!this.currentUser) return this._handleError({message:'Пользователь не вошел'},'auth'); return this.currentUser.updateEmail(args.NEW_EMAIL).catch(e => this._handleError(e, 'auth')); }
     
-    // [НОВОЕ] --- Управление аккаунтом ---
     reauthenticateUser(args) {
         if (!this.currentUser) return this._handleError({message:'Пользователь не вошел'},'auth');
         const credential = firebase.auth.EmailAuthProvider.credential(this.currentUser.email, args.PASSWORD);
@@ -302,7 +356,6 @@ class UltimateFirebaseExtension {
             });
     }
 
-    // --- Телефон и MFA ---
     sendVerificationCode(args) { if (!this._isReady('auth')) return; const appVerifier = window.recaptchaVerifier; return this.auth.signInWithPhoneNumber(args.PHONE_NUMBER, appVerifier).then(confirmationResult => { this.phoneConfirmationResult = confirmationResult; }).catch(error => this._handleError(error, 'auth')); }
     signInWithPhoneCode(args) { if (!this.phoneConfirmationResult) { this._handleError({ message: 'Сначала отправьте код подтверждения!' }, 'auth'); return; } return this.phoneConfirmationResult.confirm(args.CODE).catch(error => this._handleError(error, 'auth')); }
     enrollMfa(args) { if (!this.currentUser) { this._handleError({ message: 'Для подключения 2FA нужно войти в аккаунт.' }, 'mfa'); return; } const appVerifier = window.recaptchaVerifier; const phoneInfoOptions = { phoneNumber: args.PHONE_NUMBER, session: this.currentUser.multiFactor.session }; const phoneAuthProvider = new firebase.auth.PhoneAuthProvider(); return phoneAuthProvider.verifyPhoneNumber(phoneInfoOptions, appVerifier).then(verificationId => { const code = prompt('Введите код из СМС для подключения 2FA:'); if (!code) return; const assertion = firebase.auth.PhoneMultiFactorGenerator.assertion(verificationId, code); return this.currentUser.multiFactor.enroll(assertion, `My Phone`); }).catch(error => this._handleError(error, 'mfa')); }
@@ -325,9 +378,9 @@ class UltimateFirebaseExtension {
         return JSON.stringify(docs);
     }
     
-    // [ИЗМЕНЕНО] Функция запроса стала намного мощнее
-    firestoreQuery(args) {
-        if (!this._isReady('firestore')) return;
+    // Общая логика для выполнения запроса Firestore
+    _executeFirestoreQuery(args) {
+        if (!this._isReady('firestore')) return Promise.resolve('[]');
         
         let query = this.firestore.collection(args.PATH);
         
@@ -346,14 +399,26 @@ class UltimateFirebaseExtension {
             query = query.limit(Number(args.LIMIT));
         }
 
-        // Выполнение запроса
         return query.get()
-            .then(querySnapshot => {
-                this.lastFirestoreQueryResult = this._formatFirestoreSnapshot(querySnapshot);
-                this.runtime.startHats('ultimateFirebase_onFirestoreQuery');
-            })
-            .catch(e => this._handleError(e, 'firestore'));
+            .then(querySnapshot => this._formatFirestoreSnapshot(querySnapshot))
+            .catch(e => { this._handleError(e, 'firestore'); return '[]'; });
     }
+
+    // Старый блок запроса (команда)
+    firestoreQuery(args) {
+        return this._executeFirestoreQuery(args).then(result => {
+            this.lastFirestoreQueryResult = result;
+            this.runtime.startHats('ultimateFirebase_onFirestoreQuery');
+        });
+    }
+
+    // [НОВЫЙ БЛОК] Синхронный репортер для запроса Firestore
+    firestoreQuerySync(args) {
+        // Мы используем асинхронный Promise внутри репортера, 
+        // который вернет результат, когда будет готов.
+        return this._executeFirestoreQuery(args);
+    }
+
     onFirestoreQuery() { return false; }
     getFirestoreQueryResult() { return this.lastFirestoreQueryResult; }
 
@@ -384,11 +449,8 @@ class UltimateFirebaseExtension {
     
     // --- Cloud Storage ---
     storageUploadText(args) { if (!this._isReady('storage')) return; return this.storage.ref(args.PATH).putString(args.TEXT_DATA).catch(e => this._handleError(e, 'storage')); }
-    
-    // [НОВОЕ] --- Загрузка Data URL ---
     storageUploadDataURL(args) {
         if (!this._isReady('storage')) return;
-        // Используем 'data_url' формат для putString
         return this.storage.ref(args.PATH).putString(args.DATA_URL, 'data_url')
             .catch(e => this._handleError(e, 'storage'));
     }
@@ -400,11 +462,11 @@ class UltimateFirebaseExtension {
     analyticsLogEvent(args) { if (!this._isReady('analytics')) return; try { const data = this._parseValue(args.DATA); this.analytics.logEvent(args.NAME, data); } catch (e) { this._handleError(e, 'analytics'); } }
     analyticsSetUserProperty(args) { if (!this._isReady('analytics')) return; try { this.analytics.setUserProperties({ [args.KEY]: args.VALUE }); } catch (e) { this._handleError(e, 'analytics'); } }
 
-    // [НОВОЕ] --- Performance ---
+    // --- Performance ---
     perfStartTrace(args) {
         if (!this._isReady('performance')) return;
         const traceName = args.TRACE_NAME;
-        if (this.traces.has(traceName)) return; // Уже отслеживается
+        if (this.traces.has(traceName)) return; 
         const trace = this.performance.trace(traceName);
         trace.start();
         this.traces.set(traceName, trace);
@@ -413,7 +475,7 @@ class UltimateFirebaseExtension {
     perfStopTrace(args) {
         if (!this._isReady('performance')) return;
         const traceName = args.TRACE_NAME;
-        if (!this.traces.has(traceName)) return; // Не было запущено
+        if (!this.traces.has(traceName)) return; 
         const trace = this.traces.get(traceName);
         trace.stop();
         this.traces.delete(traceName);
@@ -426,12 +488,87 @@ class UltimateFirebaseExtension {
     remoteConfigGetValue(args) { if (!this._isReady('remoteConfig')) return ''; return this.remoteConfig.getValue(args.KEY).asString(); }
 
     // --- Cloud Functions ---
-    functionsCall(args) { if (!this._isReady('functions')) return; const callable = this.functions.httpsCallable(args.NAME); return callable(this._parseValue(args.DATA)).then(result => { this.lastFunctionResult = JSON.stringify(result.data); this.runtime.startHats('ultimateFirebase_onFunctionResult'); }).catch(e => this._handleError(e, 'functions')); }
+
+    // Общая логика для вызова Callable-функций
+    _executeFunctionsCall(args) {
+        if (!this._isReady('functions')) return Promise.resolve('{}');
+        const callable = this.functions.httpsCallable(args.NAME); 
+        return callable(this._parseValue(args.DATA))
+            .then(result => JSON.stringify(result.data))
+            .catch(e => { this._handleError(e, 'functions'); return '{}'; });
+    }
+
+    // Старый блок вызова (команда)
+    functionsCall(args) { 
+        return this._executeFunctionsCall(args).then(result => {
+            this.lastFunctionResult = result;
+            this.runtime.startHats('ultimateFirebase_onFunctionResult');
+        });
+    }
+
+    // [НОВЫЙ БЛОК] Синхронный репортер для Callable-функций
+    getFunctionResultSync(args) {
+        return this._executeFunctionsCall(args);
+    }
+
     onFunctionResult() { return false; }
     getFunctionResult() { return this.lastFunctionResult; }
+
     _getHttpsFunctionUrl(endpoint) { if (!this.firebase || !this.firebase.options.projectId) { this._handleError({ message: 'Firebase не настроен или отсутствует ID проекта.' }, 'functions'); return null; } const projectId = this.firebase.options.projectId; return `https://us-central1-${projectId}.cloudfunctions.net/${endpoint}`; }
-    httpsCallGet(args) { if (!this._isReady('functions')) return; const url = this._getHttpsFunctionUrl(args.ENDPOINT); if (!url) return; return fetch(url).then(response => { if (!response.ok) { throw new Error(`HTTP ошибка! Статус: ${response.status}`); } return response.json(); }).then(data => { this.lastFunctionResult = JSON.stringify(data); this.runtime.startHats('ultimateFirebase_onFunctionResult'); }).catch(e => this._handleError(e, 'functions')); }
-    httpsCallPost(args) { if (!this._isReady('functions')) return; const url = this._getHttpsFunctionUrl(args.ENDPOINT); if (!url) return; const postData = this._parseValue(args.DATA); return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(postData), }).then(response => { if (!response.ok) { throw new Error(`HTTP ошибка! Статус: ${response.status}`); } return response.json(); }).then(data => { this.lastFunctionResult = JSON.stringify(data); this.runtime.startHats('ultimateFirebase_onFunctionResult'); }).catch(e => this._handleError(e, 'functions')); }
+
+    // Общая логика для HTTPS GET
+    _executeHttpsCallGet(args) {
+        if (!this._isReady('functions')) return Promise.resolve('{}');
+        const url = this._getHttpsFunctionUrl(args.ENDPOINT);
+        if (!url) return Promise.resolve('{}');
+        
+        return fetch(url)
+            .then(response => { 
+                if (!response.ok) { throw new Error(`HTTP ошибка! Статус: ${response.status}`); } 
+                return response.json(); 
+            })
+            .then(data => JSON.stringify(data))
+            .catch(e => { this._handleError(e, 'functions'); return '{"error":"true", "message":"HTTP error"}'; });
+    }
+
+    // Общая логика для HTTPS POST
+    _executeHttpsCallPost(args) {
+        if (!this._isReady('functions')) return Promise.resolve('{}');
+        const url = this._getHttpsFunctionUrl(args.ENDPOINT);
+        if (!url) return Promise.resolve('{}');
+        const postData = this._parseValue(args.DATA);
+        
+        return fetch(url, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(postData), 
+        })
+        .then(response => { 
+            if (!response.ok) { throw new Error(`HTTP ошибка! Статус: ${response.status}`); } 
+            return response.json(); 
+        })
+        .then(data => JSON.stringify(data))
+        .catch(e => { this._handleError(e, 'functions'); return '{"error":"true", "message":"HTTP error"}'; });
+    }
+
+    // Старые блоки HTTPS
+    httpsCallGet(args) {
+        return this._executeHttpsCallGet(args).then(result => {
+            this.lastFunctionResult = result;
+            this.runtime.startHats('ultimateFirebase_onFunctionResult');
+        });
+    }
+
+    httpsCallPost(args) {
+        return this._executeHttpsCallPost(args).then(result => {
+            this.lastFunctionResult = result;
+            this.runtime.startHats('ultimateFirebase_onFunctionResult');
+        });
+    }
+
+    // [НОВЫЕ БЛОКИ] Синхронные репортеры для HTTPS
+    httpsCallGetSync(args) { return this._executeHttpsCallGet(args); }
+    httpsCallPostSync(args) { return this._executeHttpsCallPost(args); }
 
     // --- Realtime Database (RTDB) ---
     writeData(args) { if (!this._isReady('db')) return; return this.db.ref(args.PATH).set(this._parseValue(args.VALUE)).catch(error => this._handleError(error, 'db')); }
@@ -441,23 +578,47 @@ class UltimateFirebaseExtension {
     removeOnDisconnect(args) { if (!this._isReady('db')) return; const ref = this.db.ref(args.PATH); ref.onDisconnect().cancel(); return ref.onDisconnect().remove().catch(error => this._handleError(error, 'db')); }
     cancelOnDisconnect(args) {if (!this._isReady('db')) return;return this.db.ref(args.PATH).onDisconnect().cancel().catch(error => this._handleError(error, 'db'));}
     readData(args) { if (!this._isReady('db')) return Promise.resolve(''); return this.db.ref(args.PATH).get().then(snapshot => { if (!snapshot.exists()) { return ''; } const data = snapshot.val(); if (typeof data === 'object' && data !== null) { return JSON.stringify(data); } return data; }).catch(error => { this._handleError(error, 'db'); return 'ОШИБКА'; }); }
-    listenForData(args) { if (!this._isReady('db')) return false; const path = args.PATH; if (this.dbListeners.has(path)) return; const listener = this.db.ref(path).on('value', snapshot => { const data = snapshot.val(); this.lastReceivedData = (data && typeof data === 'object') ? JSON.stringify(data) : data; this.runtime.startHats('ultimateFirebase_listenForData', { PATH: path }); }, error => this._handleError(error, 'db')); this.dbListeners.set(path, listener); return false; }
+    
+    // [ИСПРАВЛЕНО] Логика слушателя верна. Убедимся, что при повторном вызове он не дублируется.
+    listenForData(args) { 
+        if (!this._isReady('db')) return false; 
+        const path = args.PATH; 
+        
+        // Отключаем старый слушатель, если он уже есть для этого пути
+        if (this.dbListeners.has(path)) {
+            this.db.ref(path).off('value', this.dbListeners.get(path));
+            this.dbListeners.delete(path);
+        }
+
+        // Регистрируем новый слушатель. 
+        // ВАЖНО: on() возвращает функцию-слушатель, которую нужно сохранить для off().
+        const listener = snapshot => { 
+            const data = snapshot.val(); 
+            this.lastReceivedData = (typeof data === 'object' && data !== null) ? JSON.stringify(data) : data; 
+            this.runtime.startHats('ultimateFirebase_listenForData', { PATH: path }); 
+        };
+        
+        this.db.ref(path).on('value', listener, error => this._handleError(error, 'db')); 
+        this.dbListeners.set(path, listener); 
+        return false; 
+    }
+
     getLastReceivedData() { return this.lastReceivedData; }
     
-    // [НОВОЕ] --- RTDB (Запросы) ---
-    rtdbQuery(args) {
-        if (!this._isReady('db')) return;
+    // --- RTDB (Запросы) ---
+
+    // Общая логика для выполнения запроса RTDB
+    _executeRtdbQuery(args) {
+        if (!this._isReady('db')) return Promise.resolve('[]');
         
         let query = this.db.ref(args.PATH);
         
         // Сортировка (обязательна для лимитов)
-        if (args.SORT_BY) {
-            query = query.orderByChild(args.SORT_BY);
+        const sortBy = args.SORT_BY || null;
+        if (sortBy) {
+            query = query.orderByChild(sortBy);
         } else {
-            // Если поле не указано, RTDB требует сортировку
-            // по ключу или значению для использования лимита.
-            // Будем использовать по ключу.
-            query = query.orderByKey();
+            query = query.orderByKey(); // По умолчанию сортируем по ключу
         }
         
         // Лимит
@@ -470,24 +631,34 @@ class UltimateFirebaseExtension {
         
         return query.get().then(snapshot => {
             if (!snapshot.exists()) {
-                this.lastRtdbQueryResult = '[]';
-                this.runtime.startHats('ultimateFirebase_onRtdbQuery');
-                return;
+                return '[]';
             }
             
-            // RTDB возвращает объект. 
-            // Чтобы сохранить порядок, нужно пройтись по нему.
             const results = [];
             snapshot.forEach(child => {
+                const childVal = child.val();
+                // Для удобства добавляем ключ и само значение в результат
                 results.push({
                     key: child.key,
-                    ...child.val()
+                    ...(typeof childVal === 'object' && childVal !== null ? childVal : { value: childVal })
                 });
             });
             
-            this.lastRtdbQueryResult = JSON.stringify(results);
+            return JSON.stringify(results);
+        }).catch(e => { this._handleError(e, 'db'); return '[]'; });
+    }
+
+    // Старый блок запроса (команда)
+    rtdbQuery(args) {
+        return this._executeRtdbQuery(args).then(result => {
+            this.lastRtdbQueryResult = result;
             this.runtime.startHats('ultimateFirebase_onRtdbQuery');
-        }).catch(e => this._handleError(e, 'db'));
+        });
+    }
+
+    // [НОВЫЙ БЛОК] Синхронный репортер для запроса RTDB
+    rtdbQuerySync(args) {
+        return this._executeRtdbQuery(args);
     }
     
     onRtdbQuery() { return false; }
