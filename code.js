@@ -1,5 +1,5 @@
 /* eslint-disable */
-// [НАЧАLO КОДА]
+// [НАЧАЛО КОДА]
 class UltimateFirebaseExtension {
     constructor(runtime) {
         this.runtime = runtime;
@@ -22,16 +22,18 @@ class UltimateFirebaseExtension {
         this.lastFirestoreQueryResult = ''; 
         this.lastRtdbQueryResult = ''; 
         this.lastFunctionResult = '';
-        this.isInitialized = false; // [НОВОЕ] Флаг инициализации
+        this.isInitialized = false;
 
         this.dbListeners = new Map();
         this.firestoreListeners = new Map();
         this.traces = new Map();
 
         this.runtime.on('PROJECT_STOP_ALL', () => {
+            // Очистка слушателей Realtime Database
             if (this.db) { this.dbListeners.forEach((listener, path) => this.db.ref(path).off('value', listener)); }
             this.dbListeners.clear();
             
+            // Очистка слушателей Firestore
             if (this.firestore) { this.firestoreListeners.forEach(unsubscribe => unsubscribe()); }
             this.firestoreListeners.clear();
 
@@ -53,10 +55,10 @@ class UltimateFirebaseExtension {
             blocks: [
                 { opcode: 'loadAndConfigure', blockType: Scratch.BlockType.COMMAND, text: 'Подключить Firebase: URL [DB_URL] API ключ [API_KEY] ID проекта [PROJECT_ID]', arguments: { DB_URL: { type: Scratch.ArgumentType.STRING, defaultValue: 'https://project-id.firebaseio.com' }, API_KEY: { type: Scratch.ArgumentType.STRING, defaultValue: 'AIzaSy...' }, PROJECT_ID: { type: Scratch.ArgumentType.STRING, defaultValue: 'your-project-id' }}},
                 '---',
-                { blockType: Scratch.BlockType.LABEL, text: '🛠️ Инициализация' }, // [НОВОЕ]
-                { opcode: 'onFirebaseInitialized', blockType: Scratch.BlockType.HAT, text: 'Когда Firebase инициализирован', isEdgeActivated: false }, // [НОВОЕ]
-                { opcode: 'isFirebaseInitialized', blockType: Scratch.BlockType.BOOLEAN, text: 'Firebase инициализирован?' }, // [НОВОЕ]
-                { opcode: 'reinitializeFirebase', blockType: Scratch.BlockType.COMMAND, text: 'Перезапустить Firebase' }, // [НОВОЕ]
+                { blockType: Scratch.BlockType.LABEL, text: '🛠️ Инициализация' },
+                { opcode: 'onFirebaseInitialized', blockType: Scratch.BlockType.HAT, text: 'Когда Firebase инициализирован', isEdgeActivated: false },
+                { opcode: 'isFirebaseInitialized', blockType: Scratch.BlockType.BOOLEAN, text: 'Firebase инициализирован?' },
+                { opcode: 'reinitializeFirebase', blockType: Scratch.BlockType.COMMAND, text: 'Перезапустить Firebase' },
                 '---',
                 { blockType: Scratch.BlockType.LABEL, text: 'Аутентификация и Профиль' },
                 { opcode: 'setAuthPersistence', blockType: Scratch.BlockType.COMMAND, text: 'Сохранять вход [PERSISTENCE_TYPE]', arguments: { PERSISTENCE_TYPE: { type: Scratch.ArgumentType.STRING, menu: 'persistenceOptions' }}},
@@ -96,9 +98,7 @@ class UltimateFirebaseExtension {
 
                 '---',
                 { blockType: Scratch.BlockType.LABEL, text: '🗂️ Firestore (Запросы и Слушатели)' },
-                // Старый блок запроса (команда)
                 { opcode: 'firestoreQuery', blockType: Scratch.BlockType.COMMAND, text: 'Найти в [PATH] где [FIELD] [OP] [VALUE] сортировать [SORT_BY] [SORT_DIR] лимит [LIMIT]', arguments: { PATH: { type: Scratch.ArgumentType.STRING, defaultValue: 'players' }, FIELD: { type: Scratch.ArgumentType.STRING, defaultValue: 'score' }, OP: { type: Scratch.ArgumentType.STRING, menu: 'firestoreOps' }, VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: '100' }, SORT_BY: { type: Scratch.ArgumentType.STRING, defaultValue: 'score' }, SORT_DIR: { type: Scratch.ArgumentType.STRING, menu: 'sortDir' }, LIMIT: { type: Scratch.ArgumentType.NUMBER } }},
-                // НОВЫЙ блок запроса (репортер)
                 { opcode: 'firestoreQuerySync', blockType: Scratch.BlockType.REPORTER, text: 'Найти в [PATH] где [FIELD] [OP] [VALUE] сортировать [SORT_BY] [SORT_DIR] лимит [LIMIT] (результат)', arguments: { PATH: { type: Scratch.ArgumentType.STRING, defaultValue: 'players' }, FIELD: { type: Scratch.ArgumentType.STRING, defaultValue: 'score' }, OP: { type: Scratch.ArgumentType.STRING, menu: 'firestoreOps' }, VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: '100' }, SORT_BY: { type: Scratch.ArgumentType.STRING, defaultValue: 'score' }, SORT_DIR: { type: Scratch.ArgumentType.STRING, menu: 'sortDir' }, LIMIT: { type: Scratch.ArgumentType.NUMBER } }},
                 { opcode: 'onFirestoreQuery', blockType: Scratch.BlockType.HAT, text: 'Когда запрос Firestore выполнен' },
                 { opcode: 'getFirestoreQueryResult', blockType: Scratch.BlockType.REPORTER, text: 'результат запроса Firestore' },
@@ -133,24 +133,22 @@ class UltimateFirebaseExtension {
 
                 '---',
                 { blockType: Scratch.BlockType.LABEL, text: '🚀 Cloud Functions (Callable)' },
-                // Старый блок вызова (команда)
                 { opcode: 'functionsCall', blockType: Scratch.BlockType.COMMAND, text: 'вызвать облачную функцию [NAME] с данными [DATA]', arguments: { NAME: { type: Scratch.ArgumentType.STRING, defaultValue: 'processPayment' }, DATA: { type: Scratch.ArgumentType.STRING, defaultValue: '{"amount":100, "currency":"USD"}' }}},
-                // НОВЫЙ блок вызова (репортер)
                 { opcode: 'getFunctionResultSync', blockType: Scratch.BlockType.REPORTER, text: 'результат вызова [NAME] с данными [DATA]', arguments: { NAME: { type: Scratch.ArgumentType.STRING, defaultValue: 'processPayment' }, DATA: { type: Scratch.ArgumentType.STRING, defaultValue: '{"amount":100, "currency":"USD"}' }}},
                 { opcode: 'onFunctionResult', blockType: Scratch.BlockType.HAT, text: 'когда облачная функция вернула ответ'},
                 { opcode: 'getFunctionResult', blockType: Scratch.BlockType.REPORTER, text: 'последний ответ от функции' },
                 
                 '---',
-                { blockType: Scratch.BlockType.LABEL, text: '🌐 HTTPS Функции' },
-                // Старые блоки HTTP
-                { opcode: 'httpsCallGet', blockType: Scratch.BlockType.COMMAND, text: 'HTTPS GET запрос на эндпоинт [ENDPOINT]', arguments: { ENDPOINT: { type: Scratch.ArgumentType.STRING, defaultValue: 'helloWorld' } } },
-                { opcode: 'httpsCallPost', blockType: Scratch.BlockType.COMMAND, text: 'HTTPS POST запрос на эндпоинт [ENDPOINT] с данными [DATA]', arguments: { ENDPOINT: { type: Scratch.ArgumentType.STRING, defaultValue: 'processData' }, DATA: { type: Scratch.ArgumentType.STRING, defaultValue: '{"key":"value"}' } } },
-                // НОВЫЕ блоки HTTP (репортеры)
-                { opcode: 'httpsCallGetSync', blockType: Scratch.BlockType.REPORTER, text: 'результат HTTPS GET запроса на [ENDPOINT]', arguments: { ENDPOINT: { type: Scratch.ArgumentType.STRING, defaultValue: 'helloWorld' } } },
-                { opcode: 'httpsCallPostSync', blockType: Scratch.BlockType.REPORTER, text: 'результат HTTPS POST запроса на [ENDPOINT] с данными [DATA]', arguments: { ENDPOINT: { type: Scratch.ArgumentType.STRING, defaultValue: 'processData' }, DATA: { type: Scratch.ArgumentType.STRING, defaultValue: '{"key":"value"}' } } },
+                { blockType: Scratch.BlockType.LABEL, text: '🌐 HTTPS Функции (с Заголовками)' },
+                // [ИЗМЕНЕНО] Добавлен аргумент HEADERS
+                { opcode: 'httpsCallGet', blockType: Scratch.BlockType.COMMAND, text: 'HTTPS GET запрос на [ENDPOINT] (заголовки: [HEADERS])', arguments: { ENDPOINT: { type: Scratch.ArgumentType.STRING, defaultValue: 'helloWorld' }, HEADERS: { type: Scratch.ArgumentType.STRING, defaultValue: '{}' } } },
+                { opcode: 'httpsCallPost', blockType: Scratch.BlockType.COMMAND, text: 'HTTPS POST запрос на [ENDPOINT] с данными [DATA] (заголовки: [HEADERS])', arguments: { ENDPOINT: { type: Scratch.ArgumentType.STRING, defaultValue: 'processData' }, DATA: { type: Scratch.ArgumentType.STRING, defaultValue: '{"key":"value"}' }, HEADERS: { type: Scratch.ArgumentType.STRING, defaultValue: '{}' } } },
+                
+                { opcode: 'httpsCallGetSync', blockType: Scratch.BlockType.REPORTER, text: 'результат HTTPS GET запроса на [ENDPOINT] (заголовки: [HEADERS])', arguments: { ENDPOINT: { type: Scratch.ArgumentType.STRING, defaultValue: 'helloWorld' }, HEADERS: { type: Scratch.ArgumentType.STRING, defaultValue: '{}' } } },
+                { opcode: 'httpsCallPostSync', blockType: Scratch.BlockType.REPORTER, text: 'результат HTTPS POST запроса на [ENDPOINT] с данными [DATA] (заголовки: [HEADERS])', arguments: { ENDPOINT: { type: Scratch.ArgumentType.STRING, defaultValue: 'processData' }, DATA: { type: Scratch.ArgumentType.STRING, defaultValue: '{"key":"value"}' }, HEADERS: { type: Scratch.ArgumentType.STRING, defaultValue: '{}' } } },
                 
                 '---',
-                { blockType: Scratch.BlockType.LABEL, text: 'База данных в реальном времени (старая)' },
+                { blockType: Scratch.BlockType.LABEL, text: 'База данных в реальном времени (Realtime DB)' },
                 { opcode: 'writeData', blockType: Scratch.BlockType.COMMAND, text: 'Записать по пути [PATH] значение [VALUE]', arguments: { PATH: { type: Scratch.ArgumentType.STRING, defaultValue: 'users/player1' }, VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: '{"score": 100}' }}},
                 { opcode: 'rtdbAtomicAdd', blockType: Scratch.BlockType.COMMAND, text: 'Безопасно прибавить к [PATH] число [VALUE]', arguments: { PATH: { type: Scratch.ArgumentType.STRING, defaultValue: 'users/player1/score' }, VALUE: { type: Scratch.ArgumentType.NUMBER, defaultValue: 10 }}},
                 { opcode: 'deleteData', blockType: Scratch.BlockType.COMMAND, text: 'Удалить данные по пути [PATH]', arguments: { PATH: { type: Scratch.ArgumentType.STRING, defaultValue: 'users/player1/temp' }}},
@@ -163,9 +161,7 @@ class UltimateFirebaseExtension {
                 
                 '---',
                 { blockType: Scratch.BlockType.LABEL, text: 'RTDB (Запросы для списков лидеров)' },
-                // Старый блок запроса (команда)
                 { opcode: 'rtdbQuery', blockType: Scratch.BlockType.COMMAND, text: 'Найти в RTDB [PATH] сортировать по [SORT_BY] взять [LIMIT_TYPE] [LIMIT] шт', arguments: { PATH: { type: Scratch.ArgumentType.STRING, defaultValue: 'scores' }, SORT_BY: { type: Scratch.ArgumentType.STRING, defaultValue: 'score' }, LIMIT_TYPE: { type: Scratch.ArgumentType.STRING, menu: 'limitType' }, LIMIT: { type: Scratch.ArgumentType.NUMBER, defaultValue: 10 } }},
-                // НОВЫЙ блок запроса (репортер)
                 { opcode: 'rtdbQuerySync', blockType: Scratch.BlockType.REPORTER, text: 'Найти в RTDB [PATH] сортировать по [SORT_BY] взять [LIMIT_TYPE] [LIMIT] шт (результат)', arguments: { PATH: { type: Scratch.ArgumentType.STRING, defaultValue: 'scores' }, SORT_BY: { type: Scratch.ArgumentType.STRING, defaultValue: 'score' }, LIMIT_TYPE: { type: Scratch.ArgumentType.STRING, menu: 'limitType' }, LIMIT: { type: Scratch.ArgumentType.NUMBER, defaultValue: 10 } }},
                 { opcode: 'onRtdbQuery', blockType: Scratch.BlockType.HAT, text: 'Когда запрос RTDB выполнен' },
                 { opcode: 'getRtdbQueryResult', blockType: Scratch.BlockType.REPORTER, text: 'результат запроса RTDB' },
@@ -209,9 +205,8 @@ class UltimateFirebaseExtension {
     _isReady(service) { if (!this.firebase) { this._handleError({ message: 'Firebase не инициализирован!' }, 'auth'); return false; } if (service && !this[service]) { this._handleError({ message: `Сервис ${service} не доступен.` }, 'auth'); return false; } return true; }
     _parseValue(value) { try { return JSON.parse(value); } catch (e) { return value; } }
     
-    // [ИЗМЕНЕНО] Вынос логики инициализации в отдельный метод для переиспользования
     async _initialize(config) {
-        this.isInitialized = false; // Сброс флага
+        this.isInitialized = false; 
         
         const loadScript = src => new Promise((resolve, reject) => { 
             if (document.querySelector(`script[src="${src}"]`)) return resolve(); 
@@ -222,7 +217,6 @@ class UltimateFirebaseExtension {
             document.head.appendChild(s); 
         }); 
         
-        // Загрузка всех необходимых скриптов
         await Promise.all([ 
             loadScript("https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"), 
             loadScript("https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"), 
@@ -236,10 +230,6 @@ class UltimateFirebaseExtension {
         ]);
 
         if (window.firebase.apps.length) { 
-            // Если есть уже инициализированное приложение, 
-            // мы его не переинициализируем, а просто берем, 
-            // чтобы не было ошибки. Для полной переинициализации
-            // нужно вызывать reinitializeFirebase.
             this.firebase = window.firebase.app(); 
         } else { 
             this.firebase = window.firebase.initializeApp(config); 
@@ -268,7 +258,7 @@ class UltimateFirebaseExtension {
             console.warn("Recaptcha Verifier не удалось инициализировать. Вход по телефону может не работать."); 
         } 
 
-        this.isInitialized = true; // Установка флага
+        this.isInitialized = true; 
         this.runtime.startHats('ultimateFirebase_onFirebaseInitialized');
         console.log("Firebase Full Suite SDK загружен и настроен."); 
     }
@@ -288,12 +278,9 @@ class UltimateFirebaseExtension {
         return this._initialize(firebaseConfig).catch(error => this._handleError(error, 'auth'));
     }
     
-    // [НОВЫЙ БЛОК] Повторная инициализация
     reinitializeFirebase(args) {
         if (this.firebase) {
-            // Закрываем все слушатели и выходим
             this.runtime.emit('PROJECT_STOP_ALL');
-            // Удаляем существующее приложение Firebase
             try {
                 this.firebase.delete();
             } catch(e) {
@@ -301,16 +288,10 @@ class UltimateFirebaseExtension {
             }
             this.firebase = null;
         }
-
-        // Вызываем команду "Подключить Firebase..." с текущими параметрами, 
-        // которые, к сожалению, мы не сохранили, поэтому блок перезапуска должен 
-        // быть вызван после 'Подключить Firebase'
-        this._handleError({ message: 'Для повторной инициализации используйте блок "Подключить Firebase..." с новыми или теми же параметрами. Этот блок лишь очищает предыдущую сессию.' }, 'auth');
+        this._handleError({ message: 'Для повторной инициализации используйте блок "Подключить Firebase..."' }, 'auth');
     }
 
-    // [НОВЫЙ БЛОК] Булевый репортер
     isFirebaseInitialized() { return this.isInitialized; }
-
     onFirebaseInitialized() { return false; }
     onAuthError() { return false; }
     onDbError() { return false; }
@@ -318,7 +299,7 @@ class UltimateFirebaseExtension {
     getLastError() { return this.lastErrorMessage; }
     clearLastError() { this.lastErrorMessage = ''; }
     
-    // ... (Остальные методы Аутентификации) ...
+    // ... Auth ...
     setAuthPersistence(args) { if (!this._isReady('auth')) return; this.persistenceType = (args.PERSISTENCE_TYPE === 'Навсегда (по умолчанию)') ? 'local' : 'session'; }
     _getPersistence() { return this.persistenceType === 'local' ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION; }
     
@@ -369,7 +350,6 @@ class UltimateFirebaseExtension {
     firestoreGetDoc(args) { if (!this._isReady('firestore')) return Promise.resolve(''); return this.firestore.doc(args.PATH).get().then(doc => doc.exists ? JSON.stringify(doc.data()) : '').catch(e => { this._handleError(e, 'firestore'); return ''; }); }
     firestoreDeleteDoc(args) { if (!this._isReady('firestore')) return; return this.firestore.doc(args.PATH).delete().catch(e => this._handleError(e, 'firestore')); }
     
-    // --- Firestore (Запросы и Слушатели) ---
     _formatFirestoreSnapshot(snapshot) {
         if (!snapshot.exists && !snapshot.docs) return '';
         if (snapshot.exists) { return JSON.stringify(snapshot.data()); }
@@ -378,33 +358,15 @@ class UltimateFirebaseExtension {
         return JSON.stringify(docs);
     }
     
-    // Общая логика для выполнения запроса Firestore
     _executeFirestoreQuery(args) {
         if (!this._isReady('firestore')) return Promise.resolve('[]');
-        
         let query = this.firestore.collection(args.PATH);
-        
-        // 1. Фильтр (WHERE)
-        if (args.FIELD) {
-            query = query.where(args.FIELD, args.OP, this._parseValue(args.VALUE));
-        }
-        
-        // 2. Сортировка (ORDER BY)
-        if (args.SORT_BY) {
-            query = query.orderBy(args.SORT_BY, args.SORT_DIR === 'по убыванию' ? 'desc' : 'asc');
-        }
-        
-        // 3. Лимит (LIMIT)
-        if (args.LIMIT && Number(args.LIMIT) > 0) {
-            query = query.limit(Number(args.LIMIT));
-        }
-
-        return query.get()
-            .then(querySnapshot => this._formatFirestoreSnapshot(querySnapshot))
-            .catch(e => { this._handleError(e, 'firestore'); return '[]'; });
+        if (args.FIELD) { query = query.where(args.FIELD, args.OP, this._parseValue(args.VALUE)); }
+        if (args.SORT_BY) { query = query.orderBy(args.SORT_BY, args.SORT_DIR === 'по убыванию' ? 'desc' : 'asc'); }
+        if (args.LIMIT && Number(args.LIMIT) > 0) { query = query.limit(Number(args.LIMIT)); }
+        return query.get().then(querySnapshot => this._formatFirestoreSnapshot(querySnapshot)).catch(e => { this._handleError(e, 'firestore'); return '[]'; });
     }
 
-    // Старый блок запроса (команда)
     firestoreQuery(args) {
         return this._executeFirestoreQuery(args).then(result => {
             this.lastFirestoreQueryResult = result;
@@ -412,49 +374,50 @@ class UltimateFirebaseExtension {
         });
     }
 
-    // [НОВЫЙ БЛОК] Синхронный репортер для запроса Firestore
-    firestoreQuerySync(args) {
-        // Мы используем асинхронный Promise внутри репортера, 
-        // который вернет результат, когда будет готов.
-        return this._executeFirestoreQuery(args);
-    }
+    firestoreQuerySync(args) { return this._executeFirestoreQuery(args); }
 
     onFirestoreQuery() { return false; }
     getFirestoreQueryResult() { return this.lastFirestoreQueryResult; }
 
+    // [ИСПРАВЛЕНО] Исправлена логика слушателя: не пересоздаем, если уже есть.
     listenForDoc(args) {
         if (!this._isReady('firestore')) return false;
         const path = args.PATH;
-        if (this.firestoreListeners.has(path)) { this.firestoreListeners.get(path)(); }
+        
+        // Если уже слушаем этот путь, ничего не делаем, слушатель работает в фоне
+        if (this.firestoreListeners.has(path)) return false;
+
         const unsubscribe = this.firestore.doc(path).onSnapshot(doc => {
             this.lastFirestoreData = this._formatFirestoreSnapshot(doc);
             this.runtime.startHats('ultimateFirebase_listenForDoc', { PATH: path });
         }, error => this._handleError(error, 'firestore'));
+        
         this.firestoreListeners.set(path, unsubscribe);
         return false;
     }
+
+    // [ИСПРАВЛЕНО] То же самое для коллекций
     listenForCollection(args) {
         if (!this._isReady('firestore')) return false;
         const path = args.PATH;
-        if (this.firestoreListeners.has(path)) { this.firestoreListeners.get(path)(); }
+        
+        if (this.firestoreListeners.has(path)) return false;
+
         const unsubscribe = this.firestore.collection(path).onSnapshot(querySnapshot => {
             this.lastFirestoreData = this._formatFirestoreSnapshot(querySnapshot);
             this.runtime.startHats('ultimateFirebase_listenForCollection', { PATH: path });
         }, error => this._handleError(error, 'firestore'));
+        
         this.firestoreListeners.set(path, unsubscribe);
         return false;
     }
+
     getLastFirestoreData() { return this.lastFirestoreData; }
     firestoreStopAllListeners() { this.firestoreListeners.forEach(unsubscribe => unsubscribe()); this.firestoreListeners.clear(); console.log('Все слушатели Firestore остановлены.'); }
     
     // --- Cloud Storage ---
     storageUploadText(args) { if (!this._isReady('storage')) return; return this.storage.ref(args.PATH).putString(args.TEXT_DATA).catch(e => this._handleError(e, 'storage')); }
-    storageUploadDataURL(args) {
-        if (!this._isReady('storage')) return;
-        return this.storage.ref(args.PATH).putString(args.DATA_URL, 'data_url')
-            .catch(e => this._handleError(e, 'storage'));
-    }
-
+    storageUploadDataURL(args) { if (!this._isReady('storage')) return; return this.storage.ref(args.PATH).putString(args.DATA_URL, 'data_url').catch(e => this._handleError(e, 'storage')); }
     storageGetURL(args) { if (!this._isReady('storage')) return Promise.resolve(''); return this.storage.ref(args.PATH).getDownloadURL().catch(e => { this._handleError(e, 'storage'); return ''; }); }
     storageDeleteFile(args) { if (!this._isReady('storage')) return; return this.storage.ref(args.PATH).delete().catch(e => this._handleError(e, 'storage')); }
     
@@ -463,23 +426,8 @@ class UltimateFirebaseExtension {
     analyticsSetUserProperty(args) { if (!this._isReady('analytics')) return; try { this.analytics.setUserProperties({ [args.KEY]: args.VALUE }); } catch (e) { this._handleError(e, 'analytics'); } }
 
     // --- Performance ---
-    perfStartTrace(args) {
-        if (!this._isReady('performance')) return;
-        const traceName = args.TRACE_NAME;
-        if (this.traces.has(traceName)) return; 
-        const trace = this.performance.trace(traceName);
-        trace.start();
-        this.traces.set(traceName, trace);
-    }
-    
-    perfStopTrace(args) {
-        if (!this._isReady('performance')) return;
-        const traceName = args.TRACE_NAME;
-        if (!this.traces.has(traceName)) return; 
-        const trace = this.traces.get(traceName);
-        trace.stop();
-        this.traces.delete(traceName);
-    }
+    perfStartTrace(args) { if (!this._isReady('performance')) return; const traceName = args.TRACE_NAME; if (this.traces.has(traceName)) return; const trace = this.performance.trace(traceName); trace.start(); this.traces.set(traceName, trace); }
+    perfStopTrace(args) { if (!this._isReady('performance')) return; const traceName = args.TRACE_NAME; if (!this.traces.has(traceName)) return; const trace = this.traces.get(traceName); trace.stop(); this.traces.delete(traceName); }
 
     // --- Remote Config ---
     remoteConfigSetDefaults(args) { if (!this._isReady('remoteConfig')) return; try { this.remoteConfig.defaultConfig = this._parseValue(args.DEFAULTS); } catch (e) { this._handleError(e, 'remoteConfig'); } }
@@ -488,8 +436,6 @@ class UltimateFirebaseExtension {
     remoteConfigGetValue(args) { if (!this._isReady('remoteConfig')) return ''; return this.remoteConfig.getValue(args.KEY).asString(); }
 
     // --- Cloud Functions ---
-
-    // Общая логика для вызова Callable-функций
     _executeFunctionsCall(args) {
         if (!this._isReady('functions')) return Promise.resolve('{}');
         const callable = this.functions.httpsCallable(args.NAME); 
@@ -497,68 +443,63 @@ class UltimateFirebaseExtension {
             .then(result => JSON.stringify(result.data))
             .catch(e => { this._handleError(e, 'functions'); return '{}'; });
     }
-
-    // Старый блок вызова (команда)
     functionsCall(args) { 
         return this._executeFunctionsCall(args).then(result => {
             this.lastFunctionResult = result;
             this.runtime.startHats('ultimateFirebase_onFunctionResult');
         });
     }
-
-    // [НОВЫЙ БЛОК] Синхронный репортер для Callable-функций
-    getFunctionResultSync(args) {
-        return this._executeFunctionsCall(args);
-    }
-
+    getFunctionResultSync(args) { return this._executeFunctionsCall(args); }
     onFunctionResult() { return false; }
     getFunctionResult() { return this.lastFunctionResult; }
 
     _getHttpsFunctionUrl(endpoint) { if (!this.firebase || !this.firebase.options.projectId) { this._handleError({ message: 'Firebase не настроен или отсутствует ID проекта.' }, 'functions'); return null; } const projectId = this.firebase.options.projectId; return `https://us-central1-${projectId}.cloudfunctions.net/${endpoint}`; }
 
-    // Общая логика для HTTPS GET
+    // [ИЗМЕНЕНО] Добавлена поддержка заголовков
     _executeHttpsCallGet(args) {
         if (!this._isReady('functions')) return Promise.resolve('{}');
         const url = this._getHttpsFunctionUrl(args.ENDPOINT);
         if (!url) return Promise.resolve('{}');
         
-        return fetch(url)
-            .then(response => { 
-                if (!response.ok) { throw new Error(`HTTP ошибка! Статус: ${response.status}`); } 
-                return response.json(); 
-            })
+        const headers = {
+            'Content-Type': 'application/json',
+            ...this._parseValue(args.HEADERS) // Слияние пользовательских заголовков
+        };
+
+        return fetch(url, { method: 'GET', headers: headers })
+            .then(response => { if (!response.ok) { throw new Error(`HTTP ошибка! Статус: ${response.status}`); } return response.json(); })
             .then(data => JSON.stringify(data))
             .catch(e => { this._handleError(e, 'functions'); return '{"error":"true", "message":"HTTP error"}'; });
     }
 
-    // Общая логика для HTTPS POST
+    // [ИЗМЕНЕНО] Добавлена поддержка заголовков
     _executeHttpsCallPost(args) {
         if (!this._isReady('functions')) return Promise.resolve('{}');
         const url = this._getHttpsFunctionUrl(args.ENDPOINT);
         if (!url) return Promise.resolve('{}');
         const postData = this._parseValue(args.DATA);
         
+        const headers = {
+            'Content-Type': 'application/json',
+            ...this._parseValue(args.HEADERS)
+        };
+        
         return fetch(url, { 
             method: 'POST', 
-            headers: { 'Content-Type': 'application/json' }, 
+            headers: headers, 
             body: JSON.stringify(postData), 
         })
-        .then(response => { 
-            if (!response.ok) { throw new Error(`HTTP ошибка! Статус: ${response.status}`); } 
-            return response.json(); 
-        })
+        .then(response => { if (!response.ok) { throw new Error(`HTTP ошибка! Статус: ${response.status}`); } return response.json(); })
         .then(data => JSON.stringify(data))
         .catch(e => { this._handleError(e, 'functions'); return '{"error":"true", "message":"HTTP error"}'; });
     }
 
-    // Старые блоки HTTPS
     httpsCallGet(args) {
         return this._executeHttpsCallGet(args).then(result => {
             this.lastFunctionResult = result;
             this.runtime.startHats('ultimateFirebase_onFunctionResult');
         });
     }
-
     httpsCallPost(args) {
         return this._executeHttpsCallPost(args).then(result => {
             this.lastFunctionResult = result;
@@ -566,7 +507,6 @@ class UltimateFirebaseExtension {
         });
     }
 
-    // [НОВЫЕ БЛОКИ] Синхронные репортеры для HTTPS
     httpsCallGetSync(args) { return this._executeHttpsCallGet(args); }
     httpsCallPostSync(args) { return this._executeHttpsCallPost(args); }
 
@@ -579,19 +519,19 @@ class UltimateFirebaseExtension {
     cancelOnDisconnect(args) {if (!this._isReady('db')) return;return this.db.ref(args.PATH).onDisconnect().cancel().catch(error => this._handleError(error, 'db'));}
     readData(args) { if (!this._isReady('db')) return Promise.resolve(''); return this.db.ref(args.PATH).get().then(snapshot => { if (!snapshot.exists()) { return ''; } const data = snapshot.val(); if (typeof data === 'object' && data !== null) { return JSON.stringify(data); } return data; }).catch(error => { this._handleError(error, 'db'); return 'ОШИБКА'; }); }
     
-    // [ИСПРАВЛЕНО] Логика слушателя верна. Убедимся, что при повторном вызове он не дублируется.
+    // [ИСПРАВЛЕНО] Логика слушателя RTDB
     listenForData(args) { 
         if (!this._isReady('db')) return false; 
         const path = args.PATH; 
         
-        // Отключаем старый слушатель, если он уже есть для этого пути
+        // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Если слушатель уже есть, не удаляем его!
+        // Блок HAT вызывается каждый кадр, поэтому мы просто возвращаем false, 
+        // пока слушатель делает свою работу в фоне.
         if (this.dbListeners.has(path)) {
-            this.db.ref(path).off('value', this.dbListeners.get(path));
-            this.dbListeners.delete(path);
+            return false;
         }
 
-        // Регистрируем новый слушатель. 
-        // ВАЖНО: on() возвращает функцию-слушатель, которую нужно сохранить для off().
+        // Регистрируем слушатель только один раз
         const listener = snapshot => { 
             const data = snapshot.val(); 
             this.lastReceivedData = (typeof data === 'object' && data !== null) ? JSON.stringify(data) : data; 
@@ -605,50 +545,24 @@ class UltimateFirebaseExtension {
 
     getLastReceivedData() { return this.lastReceivedData; }
     
-    // --- RTDB (Запросы) ---
-
-    // Общая логика для выполнения запроса RTDB
     _executeRtdbQuery(args) {
         if (!this._isReady('db')) return Promise.resolve('[]');
-        
         let query = this.db.ref(args.PATH);
-        
-        // Сортировка (обязательна для лимитов)
         const sortBy = args.SORT_BY || null;
-        if (sortBy) {
-            query = query.orderByChild(sortBy);
-        } else {
-            query = query.orderByKey(); // По умолчанию сортируем по ключу
-        }
-        
-        // Лимит
+        if (sortBy) { query = query.orderByChild(sortBy); } else { query = query.orderByKey(); }
         const limit = Number(args.LIMIT) || 10;
-        if (args.LIMIT_TYPE === 'первые') {
-            query = query.limitToFirst(limit);
-        } else {
-            query = query.limitToLast(limit);
-        }
-        
+        if (args.LIMIT_TYPE === 'первые') { query = query.limitToFirst(limit); } else { query = query.limitToLast(limit); }
         return query.get().then(snapshot => {
-            if (!snapshot.exists()) {
-                return '[]';
-            }
-            
+            if (!snapshot.exists()) { return '[]'; }
             const results = [];
             snapshot.forEach(child => {
                 const childVal = child.val();
-                // Для удобства добавляем ключ и само значение в результат
-                results.push({
-                    key: child.key,
-                    ...(typeof childVal === 'object' && childVal !== null ? childVal : { value: childVal })
-                });
+                results.push({ key: child.key, ...(typeof childVal === 'object' && childVal !== null ? childVal : { value: childVal }) });
             });
-            
             return JSON.stringify(results);
         }).catch(e => { this._handleError(e, 'db'); return '[]'; });
     }
 
-    // Старый блок запроса (команда)
     rtdbQuery(args) {
         return this._executeRtdbQuery(args).then(result => {
             this.lastRtdbQueryResult = result;
@@ -656,11 +570,7 @@ class UltimateFirebaseExtension {
         });
     }
 
-    // [НОВЫЙ БЛОК] Синхронный репортер для запроса RTDB
-    rtdbQuerySync(args) {
-        return this._executeRtdbQuery(args);
-    }
-    
+    rtdbQuerySync(args) { return this._executeRtdbQuery(args); }
     onRtdbQuery() { return false; }
     getRtdbQueryResult() { return this.lastRtdbQueryResult; }
 }
